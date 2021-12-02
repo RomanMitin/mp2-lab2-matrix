@@ -118,7 +118,7 @@ template <class ValType> // сравнение
 bool TVector<ValType>::operator==(const TVector &v) const
 {
     if (this == &v) { return true; }
-    if (Size != v.Size && StartIndex != v.StartIndex) { return false; }
+    if (Size != v.Size || StartIndex != v.StartIndex) { return false; }
 
     for (int i = 0; i < Size; i++)
     {
@@ -155,10 +155,14 @@ TVector<ValType>& TVector<ValType>::operator=(const TVector &v)
 template <class ValType> // прибавить скаляр
 TVector<ValType> TVector<ValType>::operator+(const ValType &val)
 {
-    TVector<ValType> result(*this);
+    TVector<ValType> result(this->Size + this->StartIndex);
+    for (int i = 0; i < StartIndex; i++)
+    {
+        result[i] = val;
+    }
     for (int i = StartIndex; i < result.GetSize() + StartIndex; i++)
     {
-        result[i] += val;
+        result[i] = val + (*this)[i];
     }
     return result;
 } /*-------------------------------------------------------------------------*/
@@ -166,12 +170,7 @@ TVector<ValType> TVector<ValType>::operator+(const ValType &val)
 template <class ValType> // вычесть скаляр
 TVector<ValType> TVector<ValType>::operator-(const ValType &val)
 {
-    TVector<ValType> result(*this);
-    for (int i = StartIndex; i < Size + StartIndex; i++)
-    {
-        result[i] -= val;
-    }
-    return result;
+    return *this + (-val);
 } /*-------------------------------------------------------------------------*/
 
 template <class ValType> // умножить на скаляр
@@ -188,41 +187,86 @@ TVector<ValType> TVector<ValType>::operator*(const ValType &val)
 template <class ValType> // сложение
 TVector<ValType> TVector<ValType>::operator+(const TVector<ValType> &v)
 {
-    if (Size != v.Size)
+    if (Size + StartIndex != v.Size + v.StartIndex)
         throw std::exception("Wrong size in plus operator");
 
-    TVector result = *this;
-    for (int i = StartIndex; i < Size + StartIndex; i++)
+    if (Size < v.Size) 
     {
-        result[i] += v[i];
+        TVector<ValType> res(v);
+        for (int i = 0; i < StartIndex - v.StartIndex; i++)
+        {
+            res.pVector[i] = v.pVector[i];
+        }
+        for (int i = 0; i < Size; i++)
+        {
+            res.pVector[i + StartIndex - v.StartIndex] = pVector[i] + v.pVector[i + StartIndex - v.StartIndex];
+        }
+        return res;
+
     }
-    return result;
+    else
+    {
+        TVector<ValType> res(*this);
+        for (int i = 0; i < v.Size; i++)
+        {
+            res.pVector[i + v.StartIndex - StartIndex] = res.pVector[i + v.StartIndex - StartIndex] + v.pVector[i];
+        }
+        return res;
+
+    }
 } /*-------------------------------------------------------------------------*/
 
 template <class ValType> // вычитание
 TVector<ValType> TVector<ValType>::operator-(const TVector<ValType> &v)
 {
-    if (Size != v.Size)
+    if (Size + StartIndex != v.Size + v.StartIndex)
         throw std::exception("Wrong size in minus operator");
 
-    TVector result = *this;
-    for (int i = StartIndex; i < Size + StartIndex; i++)
+    if (Size < v.Size)
     {
-        result[i] -= v[i];
-    }
+        TVector<ValType> res(v);
+        for (int i = 0; i < StartIndex - v.StartIndex; i++)
+        {
+            res.pVector[i] = v.pVector[i];
+        }
+        for (int i = 0; i < Size; i++)
+        {
+            res.pVector[i + StartIndex - v.StartIndex] = pVector[i] - v.pVector[i + StartIndex - v.StartIndex];
+        }
+        return res;
 
-    return result;
+    }
+    else
+    {
+        TVector<ValType> res(*this);
+        for (int i = 0; i < v.Size; i++)
+        {
+            res.pVector[i + v.StartIndex - StartIndex] = res.pVector[i + v.StartIndex - StartIndex] - v.pVector[i];
+        }
+        return res;
+
+    }
 } /*-------------------------------------------------------------------------*/
 
 template <class ValType> // скалярное произведение
 ValType TVector<ValType>::operator*(const TVector<ValType> &v)
 {
-    if (Size != v.Size)
-        throw std::exception("Wrong size in scalar multiply operator");
-    ValType result = 0;
-    for (int i = StartIndex; i < Size + StartIndex; i++)
-        result += (*this)[i] * v[i];
-    return result;
+   if (StartIndex + Size != v.StartIndex + v.Size)
+       throw std::exception("Wrong size in scalar multiply operator");
+    if (StartIndex < v.StartIndex)
+    {
+        ValType result = 0;
+        for (int i = 0; i < Size - v.StartIndex; i++)
+            result = result + (*this)[i + v.StartIndex - StartIndex] * v[i];
+        return result;
+    }
+    else
+    {
+        ValType result = 0;
+        for (int i = 0; i < Size; i++)
+            result = result + pVector[i] * v.pVector[i];
+        return result;
+    }
 } /*-------------------------------------------------------------------------*/
 
 template <class ValType>
